@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import UserAuth, UserProfile
+
+admin.site.register(UserAuth)
+admin.site.register(UserProfile)

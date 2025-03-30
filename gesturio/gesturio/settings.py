@@ -21,7 +21,8 @@ CONFIG = os.getenv("CONFIGURATION")
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-6y4!(4jy+@x048c23wc=yu6^m9r=diez2a2meuo*-mqm_!m-$6'
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

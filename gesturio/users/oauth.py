@@ -3,8 +3,9 @@ from django.shortcuts import redirect
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
-from django.contrib.auth.models import User
+from .models import UserAuth, LoginType
 from .utils import generate_jwt_token
+
 
 class GoogleLoginView(APIView):
     def get(self, request):
@@ -54,16 +55,26 @@ class GoogleCallbackView(APIView):
         if not email:
             return Response({"error": "Failed to retrieve email"}, status=400)
 
-        user, created = User.objects.get_or_create(email=email, defaults={"username": email, "first_name": name})
+        user, created = UserAuth.objects.get_or_create(email=email,username=email,login_type=LoginType.google)
 
         access_token = generate_jwt_token(user)
         refresh_token = generate_jwt_token(user, is_refresh=True)
 
-        return Response({
+        response = Response()   
+        response.data = {
+            "id":user.user_id,
+            "email": user.email,
+            "username": user.username,
+            "login_type": user.login_type,
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": {"id": user.id, "email": user.email, "name": user.first_name}
-        })
+        }
+
+        response.set_cookie("jwt",access_token, httponly=True, secure=True, samesite="Lax")
+        response.set_cookie("refresh_token",refresh_token, httponly=True, secure=True, samesite="Lax")
+        response.status_code = 200
+        
+        return response
     
 class MicrosoftLoginView(APIView):
     def get(self, request):
@@ -113,13 +124,21 @@ class MicrosoftCallbackView(APIView):
         if not email:
             return Response({"error": "Failed to retrieve email"}, status=400)
 
-        user, created = User.objects.get_or_create(email=email, defaults={"username": email, "first_name": name})
+        user, created = UserAuth.objects.get_or_create(email=email, username=email, login_type=LoginType.microsoft)
 
         jwt_access_token = generate_jwt_token(user)
         jwt_refresh_token = generate_jwt_token(user, is_refresh=True)
 
-        return Response({
+        response = Response()
+        response.data = {
+            "id":user.user_id,
+            "email": user.email,
+            "username": user.username,
+            "login_type": user.login_type,
             "access_token": jwt_access_token,
             "refresh_token": jwt_refresh_token,
-            "user": {"id": user.id, "email": user.email, "name": user.first_name}
-        })
+        }
+        response.set_cookie("jwt",jwt_access_token, httponly=True, secure=True, samesite="Lax")
+        response.set_cookie("refresh_token",jwt_refresh_token, httponly=True, secure=True, samesite="Lax")
+        response.status_code = 200
+        return response

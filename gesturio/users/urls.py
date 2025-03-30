@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.urls import path
 from .oauth import GoogleLoginView, GoogleCallbackView, MicrosoftLoginView, MicrosoftCallbackView
-from .views import Login
+from .views import Login, RegisterAuth, UpdateProfile, Logout
 
 urlpatterns = [
-    # path("register/", RegisterView.as_view(), name="register"),
+    path("register/", RegisterAuth.as_view(), name="register"),
+    path("update/", UpdateProfile.as_view(), name="update"),
+    path("logout/", Logout.as_view(), name="logout"),
     # path("refresh/", RefreshTokenView.as_view(), name="refresh"),
     # path("profile/", ProfileView.as_view(), name="profile"),
     path("login/", Login.as_view(), name="login"),

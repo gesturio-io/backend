@@ -1,16 +1,21 @@
 import jwt
 import datetime
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.http import JsonResponse
 from typing import Any
+import hashlib
+from .models import UserAuth
+
+def md5_hash(data):
+    md5_hash = hashlib.md5(data.encode())  # Encode string to bytes and compute hash
+    return md5_hash.hexdigest()
 
 def generate_jwt_token(user, is_refresh=False):
     
     expiry_minutes = settings.REFRESH_TOKEN_EXPIRY if is_refresh else settings.ACCESS_TOKEN_EXPIRY
     expiry = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=expiry_minutes)
     payload = {
-        "user_id": user.id,
+        "user_id": user.user_id,
         "email": user.email,
         "exp": expiry,
         "is_refresh": is_refresh
@@ -47,10 +52,10 @@ class Autherize:
             payload = validate_token(token)
             if payload:
                 try:
-                    user = User.objects.get(id=payload["user_id"])
+                    user = UserAuth.objects.get(user_id=payload["user_id"])
                     kwargs["user"] = user
                     return func(*args, **kwargs)
-                except User.DoesNotExist:
+                except UserAuth.DoesNotExist:
                     return JsonResponse({"message": "User not found"}, status=404)
 
             # Try refresh token
@@ -62,13 +67,14 @@ class Autherize:
                 return JsonResponse({"message": "Invalid refresh token"}, status=401)
 
             try:
-                user = User.objects.get(id=refresh_payload["user_id"])
+                user = UserAuth.objects.get(user_id=refresh_payload["user_id"])
                 new_access_token = generate_jwt_token(user)
                 response = JsonResponse({"message": "Token refreshed"})
                 response.set_cookie("jwt", new_access_token, httponly=True, secure=True, samesite="Lax")
                 kwargs["user"] = user
                 return func(*args, **kwargs)
-            except User.DoesNotExist:
+            except UserAuth.DoesNotExist:
                 return JsonResponse({"message": "User not found"}, status=404)
 
         return wrapper
+
