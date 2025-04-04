@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.shortcuts import redirect
+from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
@@ -8,54 +9,58 @@ from django.http import JsonResponse
 from .utils import generate_jwt_token,Autherize
 from .password_utils import verify_hash
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 
+
+def index(request):
+    # print(request.META["HTTP_X_FORWARDED_PROTO"])
+    return JsonResponse({'message': 'Hello, World!'})
+
+def cache_test(request):
+    cache.set('test', 'Hello, World!', timeout=60)
+    return JsonResponse({'message': str(cache.get('test'))})
+
+def get_ip_address(request):
+     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+     if x_forwarded_for:
+        ip_list = [ip.strip() for ip in x_forwarded_for.split(',')]
+     else:
+        ip_list = [request.META.get('REMOTE_ADDR')]
+     return JsonResponse({'ip': ip_list})
 
 class RegisterAuth(APIView):
     def post(self,request):
         response = Response()
         try:
-            username = request.data['username']
-            email = request.data['email']
-            password = request.data['password']
-            if not password:
+            
+            serializer = RegisterSerializer(data=request.data)
+            
+            if serializer.is_valid():
+                user = serializer.save(
+                    login_type=LoginType.email,
+                    email_verified=False
+                )
                 response.data = {
-                    "status": "error",
-                    "message": "Password is required"
+                    "status": "success",
+                    "message": "User registered successfully"
                 }
-                response.status_code = 400
-                return response                
-        except:
+                response.status_code = 201 # CREATED 
+                return response
+            
+            else:
+                response.data = serializer.errors
+                response.status_code = 400  # BAD REQUEST
+                return response
+        
+        except Exception as e:
             response.data = {
                 "status": "error",
-                "message": "Incorrect input"
+                "message": str(e) 
             }
             response.status_code = 400
             return response
 
-        if UserAuth.objects.filter(username=username).exists() | UserAuth.objects.filter(email=email).exists():
-            response.data = {
-                "status": "error",
-                "message": "Username or email already exists"
-            }
-            response.status_code = 400
-            return response
 
-        user = UserAuth(
-            username=username,
-            email=email,
-            password_hash=password,
-            login_type=LoginType.email,
-            email_verified=False
-        )
-        user.save()
-        response.data = {
-            "status": "success",
-            "message": "User registered successfully"
-        }
-        response.status_code = 201
-        return response
-        
-        
 class UpdateProfile(APIView):   
     @Autherize()
     def get(self, request, **kwargs):  # Endpoint to GET user profile
@@ -84,72 +89,58 @@ class UpdateProfile(APIView):
 
     @Autherize()
     def post(self, request, **kwargs):  # Endpoint to update user profile
-        try:
+        # try:
             user = kwargs['user']
 
-            firstname = request.data['firstname']
-            lastname = request.data['lastname']
-            profile_picture = request.data.get('profile_picture', None)
-            bio = request.data.get('bio', None)
-            country = request.data.get('country', None)
-            native_language = request.data.get('native_language', None)
-            gender = request.data.get('gender', None)
-            date_of_birth = request.data.get('date_of_birth', None)
-            phone_number = request.data['phone_number']
-            requirement = request.data.get('requirement', UserProfile.Requirement.other)
-            daily_goal = request.data['daily_goal']
+            # firstname = request.data['firstname']
+            # lastname = request.data['lastname']
+            # profile_picture = request.data.get('profile_picture', None)
+            # bio = request.data.get('bio', None)
+            # country = request.data.get('country', None)
+            # native_language = request.data.get('native_language', None)
+            # gender = request.data.get('gender', None)
+            # date_of_birth = request.data.get('date_of_birth', None)
+            # phone_number = request.data['phone_number']
+            # requirement = request.data.get('requirement', UserProfile.Requirement.other)
+            # daily_goal = request.data['daily_goal']
 
-            if requirement not in dict(UserProfile.Requirement.choices):
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"Invalid requirement value. Must be one of: {', '.join(dict(UserProfile.Requirement.choices).keys())}"
-                }, status=400)
+            serializer = UpdateProfileSerializer(data=request.data)
+            if serializer.is_valid():
+                try:
+                    profile = user.profile
 
-            try:
-                profile = user.profile
+                    profile.firstname = serializer.validated_data['firstname']    # MOST OF THESE DATA SHOULD BE VALIDATED FROM THE FRONTEND
+                    profile.lastname = serializer.validated_data['lastname']
+                    profile.profile_picture = serializer.validated_data['profile_picture']
+                    profile.bio = serializer.validated_data['bio']
+                    profile.country = serializer.validated_data['country']
+                    profile.native_language = serializer.validated_data['native_language']
+                    profile.gender = serializer.validated_data['gender']
+                    profile.date_of_birth = serializer.validated_data['date_of_birth']
+                    profile.phone_number = serializer.validated_data['phone_number']
+                    profile.requirement = serializer.validated_data['requirement']
+                    profile.daily_goal = serializer.validated_data['daily_goal']
 
-                profile.firstname = firstname
-                profile.lastname = lastname
-                profile.profile_picture = profile_picture
-                profile.bio = bio
-                profile.country = country
-                profile.native_language = native_language
-                profile.gender = gender
-                profile.date_of_birth = date_of_birth
-                profile.phone_number = phone_number
-                profile.requirement = requirement
-                profile.daily_goal = daily_goal
+                    profile.save()
 
-                profile.save()
+                    return JsonResponse({
+                        "status": "success",
+                        "message": "Profile updated successfully",
+                    }, status=200)
 
-                return JsonResponse({
-                    "status": "success",
-                    "message": "Profile updated successfully",
-                }, status=200)
-
-            except UserProfile.DoesNotExist:
-                return JsonResponse({
-                    "status": "error",
-                    "message": "Profile not found"
-                }, status=404)
-
-        except KeyError as e:
-            return JsonResponse({
-                "status": "error",
-                "message": f"Missing required field: {str(e)}"
-            }, status=400)
-
-        except ValidationError as e:
-            return JsonResponse({
-                "status": "error",
-                "message": str(e)
-            }, status=400)
-
-        except Exception as e:
-            return JsonResponse({
-                "status": "error",
-                "message": "An unexpected error occurred"
-            }, status=500)
+                except UserProfile.DoesNotExist:
+                    return JsonResponse({
+                        "status": "error",
+                        "message": "Profile not found"
+                    }, status=404)
+            else:
+                return JsonResponse(serializer.errors, status=400)
+            
+        # except Exception as e:
+        #     return JsonResponse({
+        #         "status": "error",
+        #         "message": str(e)
+        #     }, status=500)
 
         
 
@@ -169,68 +160,18 @@ class Login(APIView):
             status=200
         )
         
-    def post(self,request):  # ENDPOINT TO LOGIN
-        response = Response()
-        try:
-            username = request.data['username']
-            password = request.data['password']
-
-            usernameEntered = UserAuth.objects.filter(username=username).exists()
-            emailEntered = UserAuth.objects.filter(email=username).exists()
-
-            if not (usernameEntered | emailEntered):
-                response.data = {
-                    "status": "error",
-                    "message": "Username or email does not exist"
-                }
-                response.status_code = 404
-                return response
-
-        except:
-            response.data = {
-                "status": "Incorrect input"
-                }
-            response.status_code = 404
-            return response
-        
-        if usernameEntered:
-            user = UserAuth.objects.filter(username=username)
-            user = user.first()
-
-        if emailEntered:
-            user = UserAuth.objects.filter(email=username)
-            user = user.first()
-        
-        if not (user.login_type == LoginType.email):
-            response.data = {
-                "status": "error",
-                "message": "Please login with username or email , this email is linked with a non-email login type"
-            }
-            response.status_code = 400
-            return response
-
-
-        if not verify_hash(password,user.password_hash):
-            response.data = {
-                "status": "Incorrect password"
-                }
-            response.status_code = 404
-            return response
-        
-        if not hasattr(user, 'profile') or not user.profile.firstname or not user.profile.lastname:
-            response.data = {
-                "status": "error",
-                "message": "Please complete your profile before proceeding"
-            }
-            response.status_code = 400
-            return response
-        
+    def post(self, request):  # ENDPOINT TO LOGIN
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+            
+        user = serializer.validated_data['user']
         token = generate_jwt_token(user)
-        refresh_token = generate_jwt_token(user,is_refresh=True)
-           
+        refresh_token = generate_jwt_token(user, is_refresh=True)
+        
         user.is_loggedin = True
         user.save()
-        
+        response = Response()
         response.data ={
                     "id":user.user_id,
                     "email": user.email,

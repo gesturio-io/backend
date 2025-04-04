@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
     
 # Application definition
 
@@ -39,20 +39,37 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
+    'corsheaders',
     'rest_framework',
     
     'users',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # 'gesturio.middleware.JWTAuthenticationMiddleware',
+    'gesturio.middleware.RateLimiterMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True # allows the inclusion of session cookies or authentication headers in cross-origin requests
+
+CORS_ALLOWED_ORIGINS = [
+    "https://api.gesturio.com",
+    "http://localhost:8080",
+    "http://127.0.0.1:80",
+    "http://127.0.0.1:3000"
+]
+SESSION_COOKIE_SAMESITE = 'None' # TO ALLOW CROSS-SITE COOKIES
+
 
 ROOT_URLCONF = 'gesturio.urls'
 
@@ -131,6 +148,11 @@ USE_I18N = True
 USE_TZ = True
 
 
+# AUTHENTICATION_BACKENDS = [
+#     'users.backends.JWTAuthenticationBackend',
+#     'django.contrib.auth.backends.ModelBackend',
+# ]
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
@@ -158,3 +180,35 @@ REFRESH_TOKEN_EXPIRY = int(os.getenv("REFRESH_TOKEN_EXPIRY"))
 ACCESS_TOKEN_EXPIRY = int(os.getenv("ACCESS_TOKEN_EXPIRY"))
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+
+
+# NEED TO SET UP REDIS AND UNDERSTAND HOW RATE LIMITING WORKS
+# Rate Limiting Settings
+
+RATE_LIMIT_DEFAULT = int(os.getenv("RATE_LIMIT_DEFAULT")) 
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW")) 
+TRUSTED_PROXIES = [
+   "127.0.0.1:80",
+   "192.168.1.1"
+]
+
+# Cache settings for rate limiting
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Allow Django to detect HTTPS behind a proxy
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# # Allow trusted proxies to pass headers
+# USE_X_FORWARDED_HOST = True
+
+# CSRF_TRUSTED_ORIGINS = [
+#     'http://127.0.0.1:80'
+# ]

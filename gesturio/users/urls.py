@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from .oauth import GoogleLoginView, GoogleCallbackView, MicrosoftLoginView, MicrosoftCallbackView
-from .views import Login, RegisterAuth, UpdateProfile, Logout
+from .views import Login, RegisterAuth, UpdateProfile, Logout, cache_test, get_ip_address
 
 urlpatterns = [
     path("register/", RegisterAuth.as_view(), name="register"),
@@ -14,4 +14,6 @@ urlpatterns = [
     path("google/login/callback/", GoogleCallbackView.as_view(), name="google-callback"),
     path("microsoft/login/", MicrosoftLoginView.as_view(), name="microsoft-login"),
     path("microsoft/callback/", MicrosoftCallbackView.as_view(), name="microsoft-callback"),
+    path("cache-test/", cache_test, name="cache-test"),
+    path("get-ip/", get_ip_address, name="get-ip"),
 ]
