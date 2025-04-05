@@ -6,6 +6,8 @@ from django.conf import settings
 from .utility import get_client_ip
 from django.utils.deprecation import MiddlewareMixin
 from users.backends import JWTAuthenticationBackend
+import os
+import json
 
 # NOT STABLE , NOT USED 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
@@ -31,6 +33,21 @@ class RateLimiterMiddleware:
         self.get_response = get_response
         self.default_rate_limit = settings.RATE_LIMIT_DEFAULT
         self.default_window = settings.RATE_LIMIT_WINDOW
+        self.custom_limits = self.load_rate_limits()
+        
+    def load_rate_limits(self):
+        """Load rate limits from JSON config."""
+        config_path = os.path.join(settings.BASE_DIR, 'rate_limits.json')
+        
+        try:
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def limit_settings(self, path: str):
+        """Get rate limit settings per API path."""
+        return tuple(self.custom_limits.get(path, (self.default_rate_limit, self.default_window)))
 
 
     def __call__(self, request):
@@ -81,9 +98,6 @@ class RateLimiterMiddleware:
         """Generate a unique identifier for rate limiting."""
         
         ip = get_client_ip(request)
-        # print(ip)
-        # user_agent = request.META.get("HTTP_USER_AGENT", "")
-        
         if not hasattr(request, 'user'):
             return hashlib.sha256(f"{ip}".encode()).hexdigest()
         
@@ -92,18 +106,6 @@ class RateLimiterMiddleware:
         # Generate a unique key combining IP, User-Agent, and user ID (if available)
         unique_string = f"{user_id}|{ip}"
         return hashlib.sha256(unique_string.encode()).hexdigest()
-
-
-
-    def limit_settings(self, path: str):
-        """Get rate limit settings per API path."""
-        custom_limits = {
-            '/api/v1/auth/': (10, 60),  
-            '/api/v1/data/': (50, 60),
-            '/accounts/get-ip/':(5,60),
-            '/accounts/logout/':(5,60),
-        }
-        return custom_limits.get(path, (self.default_rate_limit, self.default_window))
 
 
     def check_rate_limit(self, client_id: str, rate_limit: int, window: int):

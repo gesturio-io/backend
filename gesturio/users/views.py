@@ -1,32 +1,35 @@
 from django.conf import settings
 from django.shortcuts import redirect
-from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer
+from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer, EmailVerificationRequestSerializer, EmailVerificationSerializerOTPCheck
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
 from .models import UserAuth, UserProfile, LoginType
 from django.http import JsonResponse
-from .utils import generate_jwt_token,Autherize
-from .password_utils import verify_hash
+from .utils import generate_jwt_token,Autherize,otp_set_and_gen,send_email
+from .password_utils import verify_hash,generate_hash
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
-
 
 def index(request):
     # print(request.META["HTTP_X_FORWARDED_PROTO"])
     return JsonResponse({'message': 'Hello, World!'})
 
+
 def cache_test(request):
     cache.set('test', 'Hello, World!', timeout=60)
     return JsonResponse({'message': str(cache.get('test'))})
 
+
 def get_ip_address(request):
      x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+     print(settings.BASE_DIR)
      if x_forwarded_for:
         ip_list = [ip.strip() for ip in x_forwarded_for.split(',')]
      else:
         ip_list = [request.META.get('REMOTE_ADDR')]
      return JsonResponse({'ip': ip_list})
+
 
 class RegisterAuth(APIView):
     def post(self,request):
@@ -89,7 +92,6 @@ class UpdateProfile(APIView):
 
     @Autherize()
     def post(self, request, **kwargs):  # Endpoint to update user profile
-        # try:
             user = kwargs['user']
 
             # firstname = request.data['firstname']
@@ -135,13 +137,6 @@ class UpdateProfile(APIView):
                     }, status=404)
             else:
                 return JsonResponse(serializer.errors, status=400)
-            
-        # except Exception as e:
-        #     return JsonResponse({
-        #         "status": "error",
-        #         "message": str(e)
-        #     }, status=500)
-
         
 
 class Login(APIView):
@@ -177,14 +172,15 @@ class Login(APIView):
                     "email": user.email,
                     "username": user.username,
                     "login_type": user.login_type,
-                    "token":token,
-                    "refresh_token":refresh_token
+                    # "token":token,
+                    # "refresh_token":refresh_token
                     }
         response.status_code = 200
         response.set_cookie("jwt",token, httponly=True, secure=True, samesite="Lax")
         response.set_cookie("refresh_token",refresh_token, httponly=True, secure=True, samesite="Lax")
         
         return response
+
 
 class Logout(APIView):
     @Autherize()
@@ -201,3 +197,49 @@ class Logout(APIView):
         response.delete_cookie("jwt",samesite="Lax")
         response.delete_cookie("refresh_token",samesite="Lax")
         return response
+
+class EmailVerificationRequest(APIView):
+    def post(self,request):
+        serializer = EmailVerificationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        email = serializer.validated_data['email']
+        user = UserAuth.objects.get(email=email)
+        if user.email_verified:
+            return Response({"status": "error", "message": "Email already verified"}, status=400)
+        otp = otp_set_and_gen(email)
+        
+        msg = f"""
+                Hi {user.username},
+
+                You're almost set! Please use the OTP below to verify your email address for Gesturio: \n
+                OTP: {otp}
+                This code will expire in {settings.OTP_TTL // 60} minutes. If you did not request this, please ignore this message.
+                Please also check the spam folder in case the email is not in your inbox. \n\n
+                Thanks for choosing Gesturio!
+                The Gesturio Team
+            """
+            
+        send_email(
+            subject="Your Gesturio Verification Code",
+            message=msg,
+            to=email
+        )
+        return JsonResponse({"status": "success", "message": "OTP sent successfully"}, status=200)
+
+class EmailVerificationCheck(APIView):
+    def post(self,request):
+        serializer = EmailVerificationSerializerOTPCheck(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        email = serializer.validated_data['email']
+        otp = serializer.validated_data['otp']
+        check = verify_hash(str(otp),cache.get(f'otp:{email}'))
+        if not check:
+            return Response({"status": "error", "message": "Invalid OTP"}, status=400)
+        cache.delete(f'otp:{email}')
+        user = UserAuth.objects.get(email=email)
+        user.email_verified = True
+        user.save()
+        return JsonResponse({"status": "success", "message": "Email verified successfully"}, status=200)
+        

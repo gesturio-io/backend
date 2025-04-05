@@ -1,0 +1,17 @@
+{
+    "/accounts/register/": [15, 60],
+    "/accounts/update/": [15, 60],
+    "/accounts/logout/": [15, 60],
+    "/accounts/login/": [15, 60],
+    "/accounts/google/login/": [15, 60],
+    "/accounts/google/login/callback/": [15, 60],
+    "/accounts/microsoft/login/": [15, 60],
+    "/accounts/microsoft/callback/": [15, 60],
+    
+    "/accounts/cache-test/": [2, 60],
+    "/accounts/get-ip/": [2, 60],
+
+    "/accounts/request-verifyemail/": [5, 60],
+    "/accounts/verifyemail/": [5, 60]
+  }
+  

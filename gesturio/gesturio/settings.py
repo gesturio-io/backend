@@ -68,7 +68,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:80",
     "http://127.0.0.1:3000"
 ]
-SESSION_COOKIE_SAMESITE = 'None' # TO ALLOW CROSS-SITE COOKIES
+
+SESSION_COOKIE_SAMESITE = 'Lax' # TEMPORARY ADDITION (USED IN LOCAL)
+SESSION_COOKIE_SECURE = False # TEMPORARY ADDITION (USED IN LOCAL)
+# SESSION_COOKIE_SAMESITE = 'None' # TO ALLOW CROSS-SITE COOKIES (USED IN PRODUCTION)
 
 
 ROOT_URLCONF = 'gesturio.urls'
@@ -193,6 +196,16 @@ TRUSTED_PROXIES = [
 ]
 
 # Cache settings for rate limiting
+
+OTP_TTL = int(os.getenv("OTP_TTL"))
+
+EMAIL_BACKEND = 'users.backends.CustomEmailBackend'
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS")
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -202,6 +215,9 @@ CACHES = {
         }
     }
 }
+
+
+
 
 # Allow Django to detect HTTPS behind a proxy
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

@@ -4,6 +4,7 @@ import re
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from .password_utils import verify_hash
+from django.core.cache import cache
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -16,6 +17,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "status": "error",
                 "message": "Password is required"
+            })
+        if len(data.get('password')) < 5:
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "Password must be at least 5 characters long"
             })
         if data.get('username') in ['admin', 'root', 'superuser', 'super', 'superuser']:
             raise serializers.ValidationError({
@@ -87,7 +93,6 @@ class LoginSerializer(serializers.Serializer):
         username = data.get('username')
         password = data.get('password')
 
-        # Check if username exists as username or email
         username_exists = UserAuth.objects.filter(username=username).exists()
         email_exists = UserAuth.objects.filter(email=username).exists()
 
@@ -97,35 +102,59 @@ class LoginSerializer(serializers.Serializer):
                 "message": "Username or email does not exist"
             })
 
-        # Get user based on whether username was email or username
         if username_exists:
             user = UserAuth.objects.get(username=username)
         else:
             user = UserAuth.objects.get(email=username)
 
-        # Check login type
         if user.login_type != LoginType.email:
             raise serializers.ValidationError({
                 "status": "error",
                 "message": "Please login with username or email, this email is linked with a non-email login type"
             })
 
-        # Verify password
         if not verify_hash(password, user.password):
             raise serializers.ValidationError({
                 "status": "error",
                 "message": "Incorrect password"
             })
-
-        # Check if profile is complete
         if not hasattr(user, 'profile') or not user.profile.firstname or not user.profile.lastname:
             raise serializers.ValidationError({
                 "status": "error",
                 "message": "Please complete your profile before proceeding"
             })
 
-        # Add user to validated data for use in view
         data['user'] = user
         return data
 
+class EmailVerificationRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        if not UserAuth.objects.filter(email=email).exists():
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "User with this email does not exist"
+            })
+        return data
     
+class EmailVerificationSerializerOTPCheck(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    otp = serializers.CharField(required=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        otp = data.get('otp')
+        if not UserAuth.objects.filter(email=email).exists():
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "User with this email does not exist"
+            })
+        if not cache.get(f'otp:{email}'):
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "OTP has expired"
+            })
+        return data
+

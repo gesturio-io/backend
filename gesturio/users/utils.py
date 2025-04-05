@@ -3,8 +3,18 @@ import datetime
 from django.conf import settings
 from django.http import JsonResponse
 from typing import Any
-import hashlib
+from .password_utils import generate_hash
+from django.core.cache import cache
 from .models import UserAuth
+import random
+import hashlib
+from django.core.mail import EmailMessage
+
+def otp_set_and_gen(email):
+    otp = random.randint(100000, 999999)
+    hashed_otp = generate_hash(str(otp))
+    cache.set(f"otp:{email}", hashed_otp, settings.OTP_TTL)
+    return otp
 
 def md5_hash(data):
     md5_hash = hashlib.md5(data.encode())  # Encode string to bytes and compute hash
@@ -77,4 +87,10 @@ class Autherize:
                 return JsonResponse({"message": "User not found"}, status=404)
 
         return wrapper
+
+
+def send_email(subject, message, to):
+    email = EmailMessage(subject, message, settings.EMAIL_HOST_USER, [to])
+    email.send()
+
 

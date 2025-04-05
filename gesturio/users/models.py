@@ -58,5 +58,3 @@ class UserProfile(models.Model):
     daily_goal = models.IntegerField(default=10) # in minutes
     requirement = models.CharField(max_length=100, choices=Requirement.choices, default=Requirement.other)
 
-
-    

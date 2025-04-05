@@ -1,6 +1,4 @@
-# NOT STABLE , NOT USED 
-
-
+from django.core.mail.backends.smtp import EmailBackend
 from django.contrib.auth.backends import BaseBackend
 from .models import UserAuth
 from .utils import validate_token
@@ -37,3 +35,17 @@ class JWTAuthenticationBackend(BaseBackend):
         
         except UserAuth.DoesNotExist:
             return None
+
+
+class CustomEmailBackend(EmailBackend):
+    def open(self):
+        if self.connection:
+            return False
+        self.connection = self.connection_class(self.host, self.port, timeout=self.timeout)
+        self.connection.ehlo()
+        if self.use_tls:
+            self.connection.starttls()  # Ensure no unsupported arguments are passed
+            self.connection.ehlo()
+        if self.username and self.password:
+            self.connection.login(self.username, self.password)
+        return True
