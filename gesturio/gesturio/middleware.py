@@ -49,17 +49,25 @@ class RateLimiterMiddleware:
         """Get rate limit settings per API path."""
         return tuple(self.custom_limits.get(path, (self.default_rate_limit, self.default_window)))
 
-
     def __call__(self, request):
+        print(f"Rate limiter processing request: {request.method} {request.path}")
+        
+        # Handle preflight requests
+        if request.method == 'OPTIONS':
+            response = self.get_response(request)
+            return response
 
         if request.method not in ['GET', 'POST']:
             return self.get_response(request)
 
         client_id = self.client_identifier(request)
+        print(f"Client ID: {client_id}")
 
         rate_limit, window = self.limit_settings(request.path)
+        print(f"Rate limit: {rate_limit}, Window: {window}")
 
         if not self.check_rate_limit(client_id, rate_limit, window):
+            print("Rate limit exceeded")
             response = JsonResponse({'error': 'Too Many Requests'}, status=429)
             response['X-RateLimit-Limit'] = str(rate_limit)
             response['X-RateLimit-Remaining'] = '0'
@@ -72,6 +80,11 @@ class RateLimiterMiddleware:
         response['X-RateLimit-Limit'] = str(rate_limit)
         response['X-RateLimit-Remaining'] = str(remaining)
         response['X-RateLimit-Reset'] = str(int(time.time()) + window)
+        
+        # Add CORS headers
+        if 'HTTP_ORIGIN' in request.META:
+            response['Access-Control-Allow-Origin'] = request.META['HTTP_ORIGIN']
+            response['Access-Control-Allow-Credentials'] = 'true'
         
         return response
 

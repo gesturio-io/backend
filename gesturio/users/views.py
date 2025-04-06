@@ -47,6 +47,7 @@ class RegisterAuth(APIView):
                     "status": "success",
                     "message": "User registered successfully"
                 }
+                
                 response.status_code = 201 # CREATED 
                 return response
             

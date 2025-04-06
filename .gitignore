@@ -50,3 +50,12 @@ config/settings_local.py
 
 # Windows files
 Thumbs.db
+# JSON configuration files in the same folder
+/db_server.json
+/oauth2.json
+
+commands.txt
+frontendchecks.txt
+ngrok.exe
+test.html
+ngrok_recovery_codes_swayamsjain244.txt
