@@ -27,7 +27,7 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
             else:
                 request.user = None
 
-
+# NOT STABLE , NOT USED 
 class RateLimiterMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response

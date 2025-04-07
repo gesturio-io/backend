@@ -10,6 +10,7 @@ from .utils import generate_jwt_token,Autherize,otp_set_and_gen,send_email
 from .password_utils import verify_hash,generate_hash
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
+import requests
 
 def index(request):
     # print(request.META["HTTP_X_FORWARDED_PROTO"])
@@ -35,7 +36,6 @@ class RegisterAuth(APIView):
     def post(self,request):
         response = Response()
         try:
-            
             serializer = RegisterSerializer(data=request.data)
             
             if serializer.is_valid():
@@ -48,7 +48,21 @@ class RegisterAuth(APIView):
                     "message": "User registered successfully"
                 }
                 
-                response.status_code = 201 # CREATED 
+                response.status_code = 201 # CREATED
+                try:
+                    req = requests.post(
+                        url="http://127.0.0.1:8000/accounts/request-verifyemail/",
+                        data={
+                            "email": request.data['email']
+                        }
+                    )
+                except requests.RequestException as e:
+                    response.data = {
+                        "status": "success",
+                        "message": "User registered successfully but email verification service is temporarily unavailable.",
+                        "warning": "Email verification service unavailable"
+                    }
+                
                 return response
             
             else:
@@ -202,30 +216,46 @@ class Logout(APIView):
 class EmailVerificationRequest(APIView):
     def post(self,request):
         serializer = EmailVerificationRequestSerializer(data=request.data)
+        # print(serializer.is_valid())
+        # print(serializer.validated_data['email'])
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
         email = serializer.validated_data['email']
         user = UserAuth.objects.get(email=email)
         if user.email_verified:
             return Response({"status": "error", "message": "Email already verified"}, status=400)
-        otp = otp_set_and_gen(email)
+        try:
+            otp = otp_set_and_gen(email)
+        except Exception as e:
+            return Response({"status": "error", "message": "Daily OTP limit exceeded"}, status=400)
         
         msg = f"""
-                Hi {user.username},
+        Hi {user.username},
 
-                You're almost set! Please use the OTP below to verify your email address for Gesturio: \n
-                OTP: {otp}
-                This code will expire in {settings.OTP_TTL // 60} minutes. If you did not request this, please ignore this message.
-                Please also check the spam folder in case the email is not in your inbox. \n\n
-                Thanks for choosing Gesturio!
-                The Gesturio Team
-            """
-            
-        send_email(
-            subject="Your Gesturio Verification Code",
-            message=msg,
-            to=email
-        )
+        Thanks for signing up with Gesturio!
+
+        Your one-time password (OTP) for verifying your email is:
+
+        {otp}
+
+        This code will expire in {settings.OTP_TTL // 60} minutes.
+
+        If you did not request this, please ignore this message.
+
+        Best regards,  
+        Team Gesturio  
+        https://gesturio.com
+        """
+
+        try:
+            send_email(
+                subject="[noreply@gesturio.com] Your Gesturio Verification Code",
+                message=msg,
+                to=email
+            )
+        except Exception as e:
+            return JsonResponse({"status": "error in sending email", "message": str(e)}, status=500)
+        
         return JsonResponse({"status": "success", "message": "OTP sent successfully"}, status=200)
 
 class EmailVerificationCheck(APIView):

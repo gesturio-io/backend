@@ -14,6 +14,12 @@ def otp_set_and_gen(email):
     otp = random.randint(100000, 999999)
     hashed_otp = generate_hash(str(otp))
     cache.set(f"otp:{email}", hashed_otp, settings.OTP_TTL)
+    if cache.get(f"otp_count:{email}") is None:
+        cache.set(f"otp_count:{email}", 0, settings.OTP_LIMIT)
+    else:
+        cache.incr(f"otp_count:{email}")
+    if cache.get(f"otp_count:{email}") >= 5:
+        raise Exception("OTP limit exceeded")
     return otp
 
 def md5_hash(data):

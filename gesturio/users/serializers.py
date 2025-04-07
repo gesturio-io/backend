@@ -118,25 +118,34 @@ class LoginSerializer(serializers.Serializer):
                 "status": "error",
                 "message": "Incorrect password"
             })
+        if not user.email_verified:
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "Please verify your email before proceeding"
+            })
         if not hasattr(user, 'profile') or not user.profile.firstname or not user.profile.lastname:
             raise serializers.ValidationError({
                 "status": "error",
                 "message": "Please complete your profile before proceeding"
             })
-
         data['user'] = user
         return data
 
 class EmailVerificationRequestSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
+    id = serializers.CharField(required=True)
 
     def validate(self, data):
-        email = data.get('email')
-        if not UserAuth.objects.filter(email=email).exists():
+        id = data.get('id')
+        if not (UserAuth.objects.filter(email=id).exists() or UserAuth.objects.filter(username=id).exists()):
             raise serializers.ValidationError({
                 "status": "error",
-                "message": "User with this email does not exist"
+                "message": "User with this email or username does not exist"
             })
+        if UserAuth.objects.filter(email=id).exists():
+            user = UserAuth.objects.get(email=id)
+        elif UserAuth.objects.filter(username=id).exists():
+            user = UserAuth.objects.get(username=id)
+        data['email'] = user.email
         return data
     
 class EmailVerificationSerializerOTPCheck(serializers.Serializer):

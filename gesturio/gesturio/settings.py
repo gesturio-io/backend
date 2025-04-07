@@ -51,7 +51,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     # 'gesturio.middleware.JWTAuthenticationMiddleware',
-    'gesturio.middleware.RateLimiterMiddleware',  # Re-enabled rate limiter
+    # 'gesturio.middleware.RateLimiterMiddleware',  # Re-enabled rate limiter
     # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -227,6 +227,7 @@ TRUSTED_PROXIES = [
 # Cache settings for rate limiting
 
 OTP_TTL = int(os.getenv("OTP_TTL"))
+OTP_LIMIT = int(os.getenv("OTP_LIMIT"))
 
 EMAIL_BACKEND = 'users.backends.CustomEmailBackend'
 EMAIL_HOST = os.getenv("EMAIL_HOST")
