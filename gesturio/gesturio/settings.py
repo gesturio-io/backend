@@ -17,6 +17,8 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG = os.getenv("CONFIGURATION")
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
@@ -53,6 +55,7 @@ MIDDLEWARE = [
     # 'gesturio.middleware.JWTAuthenticationMiddleware',
     # 'gesturio.middleware.RateLimiterMiddleware',  # Re-enabled rate limiter
     # 'django.middleware.csrf.CsrfViewMiddleware',
+    'gesturio.middleware.DisableCSRFMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -60,7 +63,7 @@ MIDDLEWARE = [
 
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [

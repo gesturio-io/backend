@@ -5,6 +5,7 @@ from rest_framework.response import Response
 import requests
 from .models import UserAuth, LoginType
 from .utils import generate_jwt_token
+from django.http import HttpResponseRedirect
 
 
 class GoogleLoginView(APIView):
@@ -24,11 +25,11 @@ class GoogleLoginView(APIView):
 
 class GoogleCallbackView(APIView):
     def get(self, request):
-
         code = request.GET.get("code")
         if not code:
             return Response({"error": "Authorization code not provided"}, status=400)
 
+        # Step 1: Exchange code for token
         token_url = "https://oauth2.googleapis.com/token"
         token_data = {
             "code": code,
@@ -44,7 +45,8 @@ class GoogleCallbackView(APIView):
             return Response({"error": "Failed to get access token"}, status=400)
 
         access_token = token_json["access_token"]
-        print(access_token)
+
+        # Step 2: Get user info
         user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
         user_info_res = requests.get(user_info_url, headers={"Authorization": f"Bearer {access_token}"})
         user_info = user_info_res.json()
@@ -55,25 +57,38 @@ class GoogleCallbackView(APIView):
         if not email:
             return Response({"error": "Failed to retrieve email"}, status=400)
 
-        user, created = UserAuth.objects.get_or_create(email=email,username=email,login_type=LoginType.google)
+        # Step 3: Register or get user
+        user, created = UserAuth.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": email,
+                "login_type": LoginType.google
+            }
+        )
 
+        # Step 4: Generate tokens
         access_token = generate_jwt_token(user)
         refresh_token = generate_jwt_token(user, is_refresh=True)
 
-        response = Response()   
-        response.data = {
-            "id":user.user_id,
-            "email": user.email,
-            "username": user.username,
-            "login_type": user.login_type,
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-        }
+        # Step 5: Redirect to frontend and set cookies
+        redirect_url = settings.FRONTEND_URL
+        response = HttpResponseRedirect(redirect_url)
+        # response = Response()
+        response.set_cookie(
+            "jwt",
+            access_token,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="Lax"
+        )
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="Lax"
+        )
 
-        response.set_cookie("jwt",access_token, httponly=True, secure=True, samesite="Lax")
-        response.set_cookie("refresh_token",refresh_token, httponly=True, secure=True, samesite="Lax")
-        response.status_code = 200
-        
         return response
     
 class MicrosoftLoginView(APIView):
