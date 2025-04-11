@@ -33,6 +33,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
     
 # Application definition
 
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -53,7 +54,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     # 'gesturio.middleware.JWTAuthenticationMiddleware',
-    # 'gesturio.middleware.RateLimiterMiddleware',  # Re-enabled rate limiter
+    # 'gesturio.middleware.RateLimiterMiddleware',
     # 'django.middleware.csrf.CsrfViewMiddleware',
     'gesturio.middleware.DisableCSRFMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

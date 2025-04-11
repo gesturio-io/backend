@@ -1,10 +1,12 @@
 from rest_framework import serializers
-from .models import UserAuth, UserProfile, LoginType
+from .models import UserAuth, UserProfile, LoginType, UserLoginLog
 import re
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from .password_utils import verify_hash
 from django.core.cache import cache
+from django.utils import timezone
+from datetime import datetime, date
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -123,11 +125,6 @@ class LoginSerializer(serializers.Serializer):
                 "status": "error",
                 "message": "Please verify your email before proceeding"
             })
-        if not hasattr(user, 'profile') or not user.profile.firstname or not user.profile.lastname:
-            raise serializers.ValidationError({
-                "status": "error",
-                "message": "Please complete your profile before proceeding"
-            })
         data['user'] = user
         return data
 
@@ -165,5 +162,46 @@ class EmailVerificationSerializerOTPCheck(serializers.Serializer):
                 "status": "error",
                 "message": "OTP has expired"
             })
+        return data
+
+class UserLoginLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserLoginLog
+        fields = ['user_id', 'ip_address', 'page_url', 'visit_date']
+        read_only_fields = ['created_at',]
+    
+    def validate(self, data):
+        
+        # Check if visit_date is provided and in correct format
+        visit_date = data.get('visit_date')
+        if visit_date:
+            try:
+                if isinstance(visit_date, str):
+                    parsed_date = datetime.strptime(visit_date, '%Y-%m-%d').date()
+                    data['visit_date'] = parsed_date
+                elif not isinstance(visit_date, (datetime, date)):
+                    raise ValueError("Invalid date format")
+            except (ValueError, TypeError):
+                data['visit_date'] = timezone.now().date()
+        else:
+            
+            data['visit_date'] = timezone.now().date()
+        
+        if not data.get('user_id'):
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "User ID is required"
+            })
+        
+        if data.get('page_url'):
+            try:
+                validator = URLValidator()
+                validator(data.get('page_url'))
+            except ValidationError:
+                raise serializers.ValidationError({
+                    "status": "error",
+                    "message": "Invalid page URL format"
+                })
+        
         return data
 

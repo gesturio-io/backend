@@ -58,3 +58,10 @@ class UserProfile(models.Model):
     daily_goal = models.IntegerField(default=10) # in minutes
     requirement = models.CharField(max_length=100, choices=Requirement.choices, default=Requirement.other)
 
+
+class UserLoginLog(models.Model):
+    user_id = models.ForeignKey(UserAuth, on_delete=models.CASCADE, related_name='login_logs')
+    ip_address = models.CharField(max_length=45)  # IPv6 can be up to 45 chars
+    visit_date = models.DateField(auto_now_add=False)
+    page_url = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)

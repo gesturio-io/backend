@@ -5,7 +5,7 @@ from rest_framework.response import Response
 import requests
 from .models import UserAuth, LoginType
 from .utils import generate_jwt_token
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 
 
 class GoogleLoginView(APIView):
@@ -58,14 +58,24 @@ class GoogleCallbackView(APIView):
             return Response({"error": "Failed to retrieve email"}, status=400)
 
         # Step 3: Register or get user
-        user, created = UserAuth.objects.get_or_create(
-            email=email,
-            defaults={
-                "username": email,
-                "login_type": LoginType.google
-            }
-        )
+        try:
+            user = UserAuth.objects.get(email=email)
+            if user.login_type != LoginType.google:
+                redirect_url = f"http://127.0.0.1:3000/login?error=existing_email"
+                return redirect(redirect_url)
+        except UserAuth.DoesNotExist:
+            user, created = UserAuth.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email,
+                    "login_type": LoginType.google
+                }
+            )
 
+        if not hasattr(user, 'profile') or not user.profile.firstname or not user.profile.lastname:
+            isProfileComplete = False
+        else:
+            isProfileComplete = True
         # Step 4: Generate tokens
         access_token = generate_jwt_token(user)
         refresh_token = generate_jwt_token(user, is_refresh=True)
@@ -74,6 +84,14 @@ class GoogleCallbackView(APIView):
         redirect_url = settings.FRONTEND_URL
         response = HttpResponseRedirect(redirect_url)
         # response = Response()
+        response.data ={
+                    "id":user.user_id,
+                    "email": user.email,
+                    "username": user.username,
+                    "login_type": user.login_type,
+                    # "token":token,
+                    # "refresh_token":refresh_token
+                    }
         response.set_cookie(
             "jwt",
             access_token,
@@ -88,7 +106,7 @@ class GoogleCallbackView(APIView):
             secure=False,
             samesite="Lax"
         )
-
+        response.set_cookie("isProfileComplete", isProfileComplete, httponly=False, secure=True, samesite="Lax")
         return response
     
 class MicrosoftLoginView(APIView):

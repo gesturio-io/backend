@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from .oauth import GoogleLoginView, GoogleCallbackView, MicrosoftLoginView, MicrosoftCallbackView
-from .views import Login, RegisterAuth, UpdateProfile, Logout, cache_test, get_ip_address, EmailVerificationRequest, EmailVerificationCheck
+from .views import Login, RegisterAuth, UpdateProfile, Logout, cache_test, get_ip_address, EmailVerificationRequest, EmailVerificationCheck, TrackPageVisit
 
 urlpatterns = [
     path("register/", RegisterAuth.as_view(), name="register"),
@@ -18,4 +18,5 @@ urlpatterns = [
     path("get-ip/", get_ip_address, name="get-ip"),
     path("request-verifyemail/", EmailVerificationRequest.as_view(), name="request-verifyemail"),
     path("verifyemail/", EmailVerificationCheck.as_view(), name="verifyemail"),
+    path("logs/", TrackPageVisit.as_view(), name="logs"),
 ]
