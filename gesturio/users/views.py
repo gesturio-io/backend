@@ -113,7 +113,7 @@ class UpdateProfile(APIView):
                 "date_of_birth": profile.date_of_birth,
                 "phone_number": profile.phone_number,
                 "daily_goal": profile.daily_goal,
-                # "requirement": profile.requirement
+                "requirement": profile.requirement
             }
             return JsonResponse(profile_data, status=200)
 

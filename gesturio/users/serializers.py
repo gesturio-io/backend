@@ -50,12 +50,14 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             'firstname', 'lastname', 'profile_picture', 
             'bio', 'country', 'gender', 'daily_goal','native_language','date_of_birth','phone_number','requirement'
         ]
+        read_only_fields = ['phone_number']
 
     def validate(self, data):
         
         missing_fields = []
+        required_fields = ['firstname', 'lastname', 'bio', 'country', 'gender', 'daily_goal', 'native_language', 'date_of_birth', 'requirement']
         
-        for field in self.Meta.fields:
+        for field in required_fields:
             if field not in data:
                 missing_fields.append(field)
         
@@ -71,18 +73,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
                 "message": "Name is not allowed"
             })
         
-        
         if data.get('profile_picture'):
             validator = URLValidator()
             validator(data.get('profile_picture'))
-            
-        if data.get('phone_number'):
-            cleaned_phone = re.sub(r'\D', '', data.get('phone_number'))
-            if len(cleaned_phone) > 10:
-                raise ValidationError({'phone_number': 'Phone number must be 10 digits'})
-            if not all(c.isdigit() for c in data.get('phone_number')):
-                raise ValidationError({'phone_number': 'Phone number can only contain digits'})
-            data['phone_number'] = cleaned_phone
         
         return data
 
