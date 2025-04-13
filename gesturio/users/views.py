@@ -106,7 +106,9 @@ class UpdateProfile(APIView):
                 "profile_picture": profile.profile_picture,
                 "bio": profile.bio,
                 "country": profile.country,
-                # "native_language": profile.native_language,
+                "email": user.email,    
+                "joined_at": user.created_at,
+                "native_language": profile.native_language,
                 "gender": profile.gender,
                 "date_of_birth": profile.date_of_birth,
                 "phone_number": profile.phone_number,
@@ -146,12 +148,11 @@ class UpdateProfile(APIView):
                     profile.profile_picture = serializer.validated_data['profile_picture']
                     profile.bio = serializer.validated_data['bio']
                     profile.country = serializer.validated_data['country']
-                    profile.native_language = serializer.validated_data['native_language']
+                    profile.native_language = serializer.validated_data.get('native_language') or profile.native_language
                     profile.gender = serializer.validated_data['gender']
-                    profile.date_of_birth = serializer.validated_data['date_of_birth']
-                    profile.phone_number = serializer.validated_data['phone_number']
-                    profile.requirement = serializer.validated_data['requirement']
-                    profile.daily_goal = serializer.validated_data['daily_goal']
+                    profile.date_of_birth = serializer.validated_data.get('date_of_birth') or profile.date_of_birth
+                    profile.phone_number = serializer.validated_data.get('phone_number') or profile.phone_number
+                    profile.daily_goal = serializer.validated_data.get('daily_goal') or profile.daily_goal
 
                     profile.save()
 

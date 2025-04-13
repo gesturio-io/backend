@@ -48,8 +48,7 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = [
             'firstname', 'lastname', 'profile_picture', 
-            'bio', 'country', 'native_language', 'gender', 
-            'date_of_birth', 'phone_number', 'requirement', 'daily_goal'
+            'bio', 'country', 'gender', 'daily_goal','native_language','date_of_birth','phone_number','requirement'
         ]
 
     def validate(self, data):
