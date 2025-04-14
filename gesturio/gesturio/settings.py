@@ -35,6 +35,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app']
 
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +45,9 @@ INSTALLED_APPS = [
     
     'corsheaders',
     'rest_framework',
+    'channels',
     
+    'videoSocket',
     'users',
 ]
 
@@ -126,6 +129,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'gesturio.wsgi.application'
+ASGI_APPLICATION = 'gesturio.asgi.application'
 
 
 # Database
@@ -249,6 +253,17 @@ CACHES = {
         }
     }
 }
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6380)],
+        },
+    },
+}
+
+
 
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1/', 'http://3.108.191.128/', 'http://localhost:3000/']
