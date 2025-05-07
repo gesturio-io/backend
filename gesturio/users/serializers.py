@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserAuth, UserProfile, LoginType, UserLoginLog
+from .models import UserAuth, UserProfile, LoginType, UserLoginLog, Friends
 import re
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
@@ -50,12 +50,11 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             'firstname', 'lastname', 'profile_picture', 
             'bio', 'country', 'gender', 'daily_goal','native_language','date_of_birth','phone_number','requirement'
         ]
-        read_only_fields = ['phone_number']
 
     def validate(self, data):
         
         missing_fields = []
-        required_fields = ['firstname', 'lastname', 'bio', 'country', 'gender', 'daily_goal', 'native_language', 'date_of_birth', 'requirement']
+        required_fields = ['firstname', 'lastname', 'bio', 'country', 'gender', 'daily_goal', 'native_language', 'date_of_birth', 'requirement', 'phone_number']
         
         for field in required_fields:
             if field not in data:
@@ -197,3 +196,34 @@ class UserLoginLogSerializer(serializers.ModelSerializer):
         
         return data
 
+class UserSearchSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+    email = serializers.CharField(source='user.email')
+
+    class Meta:
+        model = UserProfile
+        fields = ['user_id', 'firstname', 'lastname', 'profile_picture', 'username', 'email']
+
+class AddFriendSerializer(serializers.Serializer):
+    friend_id = serializers.IntegerField(required=True)
+
+    def validate(self, data):  
+        user = self.context['request']
+        if Friends.objects.filter(user_id=user.user_id, friend_id=data.get('friend_id')).exists():
+            raise serializers.ValidationError({
+                "status": "error",
+                "message": "You are already friends with this user"
+            })
+        return data
+
+class FriendUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAuth
+        fields = ['username', 'email']
+
+class FriendSerializer(serializers.ModelSerializer):
+    friend = FriendUserSerializer(source='friend_id', read_only=True)
+
+    class Meta:
+        model = Friends
+        fields = ['id', 'status', 'friend']

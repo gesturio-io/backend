@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.contrib.admin import SimpleListFilter
 from django.utils.safestring import mark_safe
-from .models import UserAuth, UserProfile, LoginType, UserLoginLog
+from .models import UserAuth, UserProfile, LoginType, UserLoginLog, Friends
 
 class EmailVerifiedFilter(SimpleListFilter):
     title = 'Email Verification Status'
@@ -194,3 +194,9 @@ class UserLoginLogAdmin(admin.ModelAdmin):
     search_fields = ('user_id__username', 'user_id__email', 'ip_address')
     readonly_fields = ('created_at',)
 
+@admin.register(Friends)
+class FriendsAdmin(admin.ModelAdmin):
+    list_display = ('user_id', 'friend_id', 'status', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('user_id__username', 'user_id__email', 'friend_id__username', 'friend_id__email')
+    readonly_fields = ('created_at',)

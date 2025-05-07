@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     
     'videoSocket',
     'users',
+    'signs',
+    'practice',
 ]
 
 MIDDLEWARE = [

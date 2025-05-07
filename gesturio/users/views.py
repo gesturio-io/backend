@@ -1,11 +1,11 @@
 from django.conf import settings
 from django.shortcuts import redirect
 from django.db import models
-from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer, EmailVerificationRequestSerializer, EmailVerificationSerializerOTPCheck, UserLoginLogSerializer
+from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer, EmailVerificationRequestSerializer, EmailVerificationSerializerOTPCheck, UserLoginLogSerializer, UserSearchSerializer, AddFriendSerializer, FriendSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import requests
-from .models import UserAuth, UserProfile, LoginType, UserLoginLog
+from .models import UserAuth, UserProfile, LoginType, UserLoginLog, Friends
 from django.http import JsonResponse
 from .utils import generate_jwt_token,Autherize,otp_set_and_gen,send_email
 from .password_utils import verify_hash,generate_hash
@@ -15,6 +15,7 @@ import requests
 from django.utils import timezone
 import json
 import re
+from django.db.models import Q
 from gesturio.utility import get_client_ip
 
 def index(request):
@@ -435,3 +436,119 @@ class TrackPageVisit(APIView):
                 "message": str(e)
             }, status=500)
         
+
+class SearchFriends(APIView):
+    @Autherize()
+    def get(self, request, **kwargs):
+        query = request.GET.get('q','')
+        one_user_srch = request.GET.get('id','')
+        user = kwargs['user']
+        if one_user_srch:
+            users = UserAuth.objects.filter(user_id=one_user_srch)
+        else:
+            users = UserAuth.objects.filter(
+                Q(username__icontains=query) | Q(email__icontains=query),
+            ).exclude(user_id=user.user_id)[:20]
+
+        profiles = UserProfile.objects.filter(user_id__in=[u.user_id for u in users])
+        return Response(UserSearchSerializer(profiles, many=True).data)
+
+class AddFriend(APIView):
+    @Autherize()
+    def post(self, request, **kwargs):
+        action = request.query_params.get('action', '')
+        if action == 'add':
+            user = kwargs['user']
+            response = Response()
+            serializer = AddFriendSerializer(data=request.data, context={'request': user})
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+            friend_id = serializer.validated_data['friend_id']
+            friend = UserAuth.objects.get(user_id=friend_id)
+            Friends.objects.create(user_id=user, friend_id=friend)
+            response.data = {
+                "status": "success",
+                "message": "Friend added successfully"
+            }
+            response.status_code = 200
+            return response
+        
+        elif action == 'accept':
+            user = kwargs['user']
+            response = Response()
+            serializer = AddFriendSerializer(data=request.data, context={'request': user})
+            
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+            
+            table_id = serializer.validated_data['friend_id']
+            table = Friends.objects.get(id=table_id)
+            table.status = 'accepted'
+            table.save()
+            Friends.objects.create(user_id=table.friend_id, friend_id=table.user_id, status='accepted')
+            response.data = {
+                "status": "success",
+                "message": "Friend request accepted successfully"
+            }
+            response.status_code = 200
+            return response
+
+        elif action == 'reject':
+            user = kwargs['user']
+            response = Response()
+            serializer = AddFriendSerializer(data=request.data, context={'request': user})
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=400)
+            table_id = serializer.validated_data['friend_id']
+            table = Friends.objects.get(id=table_id)
+            table.delete()
+            response.data = {
+                "status": "success",
+                "message": "Friend request rejected successfully"
+            }
+            response.status_code = 200
+            return response
+        
+    @Autherize()
+    def get(self, request, **kwargs):
+        user = kwargs['user']
+        status = request.query_params.get('status', 'all')
+        srch_by_id = request.query_params.get('id', '')
+        if srch_by_id:
+            friends = Friends.objects.filter(user_id=user, friend_id=srch_by_id)
+            if friends.exists():
+                return Response({
+                    "status": "success",
+                    "data": {
+                        "status": friends.first().status,
+                        "friends": True
+                    }
+                })
+            else:
+                return Response({
+                    "status": "success",
+                    "data": {
+                        "friends": False
+                    }
+                })
+        elif status == 'all':
+            friends = Friends.objects.filter(user_id=user)
+        elif status == 'pending':
+            friends = Friends.objects.filter(friend_id=user, status='pending')
+        elif status == 'accepted':
+            friends = Friends.objects.filter(user_id=user, status='accepted')
+        else:
+            return Response({
+                "status": "error",
+                "message": "Invalid status"
+            }, status=400)
+            
+        friends = FriendSerializer(friends, many=True).data
+        
+        return Response({
+            "status": "success",
+            "data": {
+                "friends": friends
+            }
+        })
+

@@ -65,3 +65,20 @@ class UserLoginLog(models.Model):
     visit_date = models.DateField(auto_now_add=False)
     page_url = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Friends(models.Model):
+    class Status(models.TextChoices):
+        pending = "pending"
+        accepted = "accepted"
+        rejected = "rejected"
+
+    user_id = models.ForeignKey(UserAuth, on_delete=models.CASCADE, related_name='friendfrom')
+    friend_id = models.ForeignKey(UserAuth, on_delete=models.CASCADE, related_name='friendto')
+    status = models.CharField(max_length=100, choices=Status.choices, default=Status.pending)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user_id', 'friend_id')
+
