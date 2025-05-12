@@ -533,8 +533,28 @@ class AddFriend(APIView):
                 })
         elif status == 'all':
             friends = Friends.objects.filter(user_id=user)
-        elif status == 'pending':
+            
+        elif status == 'pending':   
             friends = Friends.objects.filter(friend_id=user, status='pending')
+            friends_list = []
+            for friend in friends:
+                friend_data = {
+                    'id': friend.id,
+                    'status': friend.status,
+                    'friend': {
+                        'username': friend.user_id.username,
+                        'email': friend.user_id.email
+                    }
+                }
+                friends_list.append(friend_data)
+            friends = friends_list
+            return Response({
+                "status": "success",
+                "data": {
+                    "friends": friends
+                }
+            })
+
         elif status == 'accepted':
             friends = Friends.objects.filter(user_id=user, status='accepted')
         else:
@@ -544,7 +564,6 @@ class AddFriend(APIView):
             }, status=400)
             
         friends = FriendSerializer(friends, many=True).data
-        
         return Response({
             "status": "success",
             "data": {

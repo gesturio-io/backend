@@ -47,10 +47,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     
-    'videoSocket',
     'users',
     'signs',
     'practice',
+    'learn'
 ]
 
 MIDDLEWARE = [

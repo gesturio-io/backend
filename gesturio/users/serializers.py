@@ -202,7 +202,7 @@ class UserSearchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['user_id', 'firstname', 'lastname', 'profile_picture', 'username', 'email']
+        fields = ['user_id', 'firstname', 'lastname', 'profile_picture', 'username', 'email','bio','country','gender','daily_goal','native_language','date_of_birth']
 
 class AddFriendSerializer(serializers.Serializer):
     friend_id = serializers.IntegerField(required=True)

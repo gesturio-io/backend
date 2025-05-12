@@ -6,5 +6,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('users.urls')),
     path('', views.index, name='index'),
-    path('video/', include('videoSocket.urls')),
+    path('learn/',include('learn.urls'))
 ]
