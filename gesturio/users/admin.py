@@ -189,14 +189,29 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(UserLoginLog)
 class UserLoginLogAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'ip_address', 'visit_date', 'created_at')
+    list_display = ('get_user_username', 'get_user_email', 'ip_address', 'visit_date', 'created_at')
     list_filter = ('visit_date',)
     search_fields = ('user_id__username', 'user_id__email', 'ip_address')
     readonly_fields = ('created_at',)
 
+    def get_user_username(self, obj):
+        return obj.user_id.username if obj.user_id else '-'
+    get_user_username.short_description = 'Username'
+
+    def get_user_email(self, obj):
+        return obj.user_id.email if obj.user_id else '-'
+    get_user_email.short_description = 'Email'
+
 @admin.register(Friends)
 class FriendsAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'friend_id', 'status', 'created_at')
+    list_display = ('get_user_username', 'get_friend_username', 'status', 'created_at')
     list_filter = ('status',)
-    search_fields = ('user_id__username', 'user_id__email', 'friend_id__username', 'friend_id__email')
     readonly_fields = ('created_at',)
+
+    def get_user_username(self, obj):
+        return obj.user_id.username if obj.user_id else '-'
+    get_user_username.short_description = 'User'
+
+    def get_friend_username(self, obj):
+        return obj.friend_id.username if obj.friend_id else '-'
+    get_friend_username.short_description = 'Friend'
