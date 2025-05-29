@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'users',
     'signs',
     'practice',
-    'learn'
+    'learn',
+    'settings',
 ]
 
 MIDDLEWARE = [
@@ -282,3 +283,6 @@ CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1/', 'http://3.108.191.128/', 'http://lo
 # CSRF_TRUSTED_ORIGINS = [
 #     'http://127.0.0.1:80'
 # ]
+
+MEDIA_URL = ''
+MEDIA_ROOT = os.path.join(BASE_DIR,'')

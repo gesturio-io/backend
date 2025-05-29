@@ -14,6 +14,12 @@ from users.utils import Autherize
 class CategoryFetch(APIView):
     @Autherize()
     def get(self, request, *args, **kwargs):
+        print("=== Debug Info ===")
+        print(f"Request cookies: {request.COOKIES}")
+        print(f"Request kwargs: {kwargs}")
+        print(f"Request args: {args}")
+        print("=================")
+        user = kwargs['user']
         category_id = request.query_params.get('id')
         lessons_flag = request.query_params.get('lessons')
         if not category_id:
@@ -29,15 +35,17 @@ class CategoryFetch(APIView):
                 return Response(serialized_data)
                 
             category = Category.objects.get(id=category_id)
+            print(category)
             if lessons_flag == 'all':
                 lessons = category.lessons.all().order_by('id')
+                print(lessons)
                 lessons_data = [
                     {
                         'id': str(lesson.id),
                         'title': lesson.title,
                         'description': lesson.description,
                         'duration': f"{lesson.duration} min",
-                        'progress': self._get_lesson_progress(request.user, lesson),
+                        'progress': self._get_lesson_progress(user, lesson),
                         'image': lesson.image or ""
                     }
                     for lesson in lessons
@@ -65,7 +73,7 @@ class CategoryFetch(APIView):
                     'title': lesson.title,
                     'description': lesson.description,
                     'duration': f"{lesson.duration} min",
-                    'progress': self._get_lesson_progress(request.user, lesson),
+                    'progress': self._get_lesson_progress(user, lesson),
                     'image': lesson.image or "",
                     'steps': [
                         {
@@ -85,13 +93,18 @@ class CategoryFetch(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            print(f"=== Error Debug ===")
+            print(f"Error type: {type(e)}")
+            print(f"Error message: {str(e)}")
+            print(f"Error args: {e.args}")
+            print("=================")
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     def _get_lesson_progress(self, user, lesson):
-        if user.is_authenticated:
+        if user:
             try:
                 progress = UserLessonProgress.objects.get(user=user, lesson=lesson)
                 return 100 if progress.completed else 0

@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.shortcuts import redirect
 from django.db import models
 from .serializers import RegisterSerializer, UpdateProfileSerializer, LoginSerializer, EmailVerificationRequestSerializer, EmailVerificationSerializerOTPCheck, UserLoginLogSerializer, UserSearchSerializer, AddFriendSerializer, FriendSerializer
 from rest_framework.views import APIView
@@ -9,12 +8,9 @@ from .models import UserAuth, UserProfile, LoginType, UserLoginLog, Friends
 from django.http import JsonResponse
 from .utils import generate_jwt_token,Autherize,otp_set_and_gen,send_email
 from .password_utils import verify_hash,generate_hash
-from django.core.exceptions import ValidationError
 from django.core.cache import cache
 import requests
 from django.utils import timezone
-import json
-import re
 from django.db.models import Q
 from gesturio.utility import get_client_ip
 
