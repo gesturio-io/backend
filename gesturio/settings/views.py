@@ -13,18 +13,18 @@ class PasswordChangeView(APIView):
     def post(self, request, **kwargs):   # POST FOR REQUESTING OTP
         user = kwargs['user']
         serializer = PasswordChangeRequestSerializer(data=request.data,context={'user': user})
-        email = serializer.data['email']
         
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
+        email = serializer.data['email']
         otp = otp_set_and_gen(email)
         cache_key = f'password_change_otp_{user.user_id}'
         cache.set(cache_key, otp, timeout=600)  # 10 minutes expiry
         
         send_email(
             subject="[noreply@gesturio.com] Your Gesturio Password Reset Code",
-            msg=f'Your OTP for password change is: {otp}',
+            message=f'Your OTP for password change is: {otp}',
             to=email
         )
         

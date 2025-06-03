@@ -1,27 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-import requests
-from django.http import JsonResponse
-from django.core.cache import cache
-import requests
-from django.utils import timezone
 from .models import Category, Lesson, UserLessonProgress
-from .serializers import CategorySerializer, LessonSerializer
+from .serializers import CategorySerializer
 from users.utils import Autherize
+from .utils import get_category_completed_data
 
 class CategoryFetch(APIView):
+    
     @Autherize()
-    def get(self, request, *args, **kwargs):
-        print("=== Debug Info ===")
-        print(f"Request cookies: {request.COOKIES}")
-        print(f"Request kwargs: {kwargs}")
-        print(f"Request args: {args}")
-        print("=================")
+    def get(self, request, **kwargs):
+        
         user = kwargs['user']
         category_id = request.query_params.get('id')
         lessons_flag = request.query_params.get('lessons')
+        
         if not category_id:
             return Response(
                 {"error": "Category id is required"},
@@ -32,21 +25,32 @@ class CategoryFetch(APIView):
             if category_id == 'all':
                 data = Category.objects.all().order_by('id')
                 serialized_data = CategorySerializer(data, many=True).data
+                completed_data = get_category_completed_data(user)
+                
+                completion_dict = {item['id']: item for item in completed_data}
+                
+                for category in serialized_data:
+                    category_id = str(category['id'])
+                    if category_id in completion_dict:
+                        category.update(completion_dict[category_id])
+                
                 return Response(serialized_data)
                 
             category = Category.objects.get(id=category_id)
-            print(category)
             if lessons_flag == 'all':
                 lessons = category.lessons.all().order_by('id')
-                print(lessons)
                 lessons_data = [
                     {
                         'id': str(lesson.id),
                         'title': lesson.title,
                         'description': lesson.description,
                         'duration': f"{lesson.duration} min",
-                        'progress': self._get_lesson_progress(user, lesson),
-                        'image': lesson.image or ""
+                        'image': lesson.image or "",
+                        'completed': UserLessonProgress.objects.filter(
+                            user=user,
+                            lesson=lesson,
+                            category=category
+                        ).exists(),
                     }
                     for lesson in lessons
                 ]
@@ -57,7 +61,6 @@ class CategoryFetch(APIView):
                     'description': category.description,
                     'image': category.image or "",
                     'slug': category.slug,
-                    'progress': 100,
                 }
                 return Response(data)
             else:
@@ -73,7 +76,6 @@ class CategoryFetch(APIView):
                     'title': lesson.title,
                     'description': lesson.description,
                     'duration': f"{lesson.duration} min",
-                    'progress': self._get_lesson_progress(user, lesson),
                     'image': lesson.image or "",
                     'steps': [
                         {
@@ -93,21 +95,7 @@ class CategoryFetch(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            print(f"=== Error Debug ===")
-            print(f"Error type: {type(e)}")
-            print(f"Error message: {str(e)}")
-            print(f"Error args: {e.args}")
-            print("=================")
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-    def _get_lesson_progress(self, user, lesson):
-        if user:
-            try:
-                progress = UserLessonProgress.objects.get(user=user, lesson=lesson)
-                return 100 if progress.completed else 0
-            except UserLessonProgress.DoesNotExist:
-                return 0
-        return 0

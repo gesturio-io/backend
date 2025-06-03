@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'channels',
     
     'users',
-    'signs',
     'practice',
     'learn',
     'settings',

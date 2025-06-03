@@ -40,8 +40,10 @@ class LessonSteps(models.Model):
 class UserLessonProgress(models.Model):
     user = models.ForeignKey(UserAuth, on_delete=models.CASCADE)
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     completed = models.BooleanField(default=False)
     last_accessed = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('user', 'lesson')
+
